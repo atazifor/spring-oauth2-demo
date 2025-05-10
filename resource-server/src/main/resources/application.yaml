@@ -1,0 +1,10 @@
+spring:
+  application.name: oauth2-resource-server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9090/oauth2/jwks
+logging:
+  level:
+    org.springframework.security: DEBUG

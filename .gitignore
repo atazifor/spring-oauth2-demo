@@ -1,0 +1,21 @@
+# Maven
+target/
+dependency-reduced-pom.xml
+release.properties
+
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Postman
+*.postman_environment.json
+
