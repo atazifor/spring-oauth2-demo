@@ -1,0 +1,25 @@
+services:
+  auth-server:
+    build: ./auth-server
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: curl --fail http://localhost:9090/.well-known/openid-configuration || exit 1
+      interval: 10s
+      retries: 5
+
+  resource-server:
+    build: ./resource-server
+    ports:
+      - "8081:8181"
+    depends_on:
+      auth-server:
+        condition: service_healthy
+
+  client-app:
+    build: ./client-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-server
+      - resource-server

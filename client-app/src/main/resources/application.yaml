@@ -1,0 +1,17 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          demo-client:
+            client-id: demo-client
+            client-secret: demo-secret
+            authorization-grant-type: client_credentials
+            scope:
+              - read
+            provider: auth-server
+        provider:
+          auth-server:
+            token-uri: http://auth-server:9090/oauth2/token
+server:
+  port: 8080

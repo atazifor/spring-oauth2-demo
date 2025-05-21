@@ -77,6 +77,7 @@
     </dependencies>
 
     <build>
+        <finalName>auth-server</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

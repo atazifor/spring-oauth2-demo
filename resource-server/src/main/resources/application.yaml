@@ -4,7 +4,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:9090/oauth2/jwks
+          jwk-set-uri: http://auth-server:9090/oauth2/jwks
 logging:
   level:
     org.springframework.security: DEBUG
+server:
+  port: 8181
