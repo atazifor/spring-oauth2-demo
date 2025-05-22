@@ -7,11 +7,15 @@ spring:
 
 server:
   port: 9090
+  servlet:
+    session:
+      tracking-modes: cookie
   error:
     whitelabel:
       enabled: false
 logging:
   level:
     org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
     org.springframework.security.oauth2: DEBUG
     com.example: DEBUG

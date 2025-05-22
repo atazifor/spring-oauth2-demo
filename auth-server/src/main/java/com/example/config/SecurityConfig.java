@@ -12,13 +12,21 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
@@ -26,6 +34,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -40,15 +49,14 @@ public class SecurityConfig {
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
         http
-                .securityMatcher("/.well-known/**", "/oauth2/**")// This filter chain only applies to authorization server endpoints
+                .securityMatcher("/.well-known/**", "/oauth2/**", "/login", "/logout")// This filter chain only applies to authorization server endpoints
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                )// Allow all requests on these paths (auth/token discovery shouldn't be restricted)
-                .csrf(AbstractHttpConfigurer::disable)// Disable login UI (we're using client_credentials, not browser login)
-                .formLogin(AbstractHttpConfigurer::disable)// Disable login UI (we're using client_credentials, not browser login)
-                .exceptionHandling(ex -> ex // Instead of redirecting to login, return 401 for unauthorized requests
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        .requestMatchers("/.well-known/**").permitAll()         // ✅ make discovery endpoints public
+                        .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
+                        .anyRequest().authenticated()                           // 🔒 require login for everything else (e.g., /oauth2/authorize)
                 )
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/oauth2/token")) // allow token exchange via POST
+                .formLogin(Customizer.withDefaults())  //login UI for auth code flow
                 .with(// Enable and configure all OAuth2 Authorization Server endpoints
                         authorizationServerConfigurer, config -> config
                         .authorizationEndpoint(Customizer.withDefaults())      // /oauth2/authorize
@@ -70,16 +78,51 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Register a demo OAuth client with client_credentials grant type and 'read' scope
+    /* Register a demo OAuth client with client_credentials grant type and 'read' scope
+    * Register anotherOAuth client with authorization and refresh token grant type with
+    *  'read' and 'openid' scope
+    * */
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
+        //client credentials flow
         RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client")
                 .clientSecret("{noop}demo-secret")
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("read")
                 .build();
-        return new InMemoryRegisteredClientRepository(registeredClient);
+
+        //authorization code and refresh token flows
+        RegisteredClient authCodeClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .clientId("postman")
+                .clientSecret("{noop}postman")
+                .scope("read")
+                .scope("openid")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientSettings(ClientSettings.builder()
+                    .requireAuthorizationConsent(false) //disables consent form temporarily
+                    .build())
+                .build();
+
+        return new InMemoryRegisteredClientRepository(List.of(registeredClient, authCodeClient));
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public UserDetailsService users(PasswordEncoder encoder) {
+        UserDetails user = User.builder()
+                .username("testuser")
+                .password(encoder.encode("testpass"))
+                .roles("USER")
+                .build();
+        return new InMemoryUserDetailsManager(user);
     }
 
     //Provide an RSA JWK (JSON Web Key) for signing JWT access tokens
