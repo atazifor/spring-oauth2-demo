@@ -1,9 +1,23 @@
 <!DOCTYPE html>
-<html>
-<head><title>OAuth2 Callback</title></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth2 Callback</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
-<h2>OAuth2 Callback</h2>
-<pre id="output">Processing...</pre>
+<div class="container">
+    <h2>🔐 OAuth2 Callback</h2>
+
+    <div id="scopes">
+        <p>Processing...</p>
+    </div>
+
+    <h3 style="margin-top: 2rem;">Raw Token Response</h3>
+    <pre id="output"></pre>
+</div>
 
 <script>
     const params = new URLSearchParams(window.location.search);
@@ -16,7 +30,7 @@
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": "Basic " + btoa("postman:postman")
+                "Authorization": "Basic " + btoa("frontend:frontend-secret")
             },
             body: new URLSearchParams({
                 grant_type: "authorization_code",
@@ -26,6 +40,21 @@
         })
             .then(res => res.json())
             .then(data => {
+                const scopesContainer = document.getElementById("scopes");
+                scopesContainer.innerHTML = "<h3>Granted Scopes:</h3>";
+
+                const scopes = (data.scope || "").split(" ");
+                if (scopes.length === 0 || !data.scope) {
+                    scopesContainer.innerHTML += "<p><em>No scopes found in token.</em></p>";
+                } else {
+                    scopes.forEach(scope => {
+                        const div = document.createElement("span");
+                        div.className = "badge";
+                        div.innerHTML = `✅ ${scope.toUpperCase()}`;
+                        scopesContainer.appendChild(div);
+                    });
+                }
+
                 document.getElementById("output").textContent = JSON.stringify(data, null, 2);
             })
             .catch(err => {

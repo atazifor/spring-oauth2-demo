@@ -5,7 +5,7 @@ document.getElementById("login-form").addEventListener("submit", function (e) {
         .map(cb => cb.value)
         .join(" ");
 
-    const clientId = "postman";
+    const clientId = "frontend";
     const redirectUri = "http://localhost:8083/callback.html"; // frontend hosted on port 8083
     const authUrl = `http://localhost:9090/oauth2/authorize?` +
         `response_type=code&` +

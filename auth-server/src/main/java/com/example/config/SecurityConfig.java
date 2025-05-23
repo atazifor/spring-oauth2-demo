@@ -1,5 +1,6 @@
 package com.example.config;
 
+import com.example.props.OAuth2ClientProperties;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -92,7 +93,7 @@ public class SecurityConfig {
     *  'read' and 'openid' scope
     * */
     @Bean
-    public RegisteredClientRepository registeredClientRepository() {
+    public RegisteredClientRepository registeredClientRepository(OAuth2ClientProperties props) {
         logger.info("Redirect URI: {}", redirectUri);
         //client credentials flow
         RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -106,7 +107,7 @@ public class SecurityConfig {
         RegisteredClient authCodeClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(redirectUri)
+                .redirectUri(props.getRedirectUri())
                 .clientId("postman")
                 .clientSecret(passwordEncoder().encode("postman"))
                 .scope("read")
@@ -117,7 +118,20 @@ public class SecurityConfig {
                     .build())
                 .build();
 
-        return new InMemoryRegisteredClientRepository(List.of(registeredClient, authCodeClient));
+        RegisteredClient frontendClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(redirectUri)
+                .clientId("frontend")
+                .clientSecret(passwordEncoder().encode("frontend-secret"))//plain text
+                .scopes(scopes -> scopes.addAll(props.getScopes()))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false) //disables consent form temporarily
+                        .build())
+                .build();
+
+        return new InMemoryRegisteredClientRepository(List.of(registeredClient, authCodeClient, frontendClient));
     }
 
     @Bean
@@ -148,7 +162,17 @@ public class SecurityConfig {
                 .password(encoder.encode("testpass"))
                 .roles("USER")
                 .build();
-        return new InMemoryUserDetailsManager(user);
+        UserDetails basicUser = User.builder()
+                .username("basicuser")
+                .password(encoder.encode("password"))
+                .roles("USER")
+                .build();
+        UserDetails adminUser = User.builder()
+                .username("adminuser")
+                .password(encoder.encode("password"))
+                .roles("ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(user, basicUser, adminUser);
     }
 
     //Provide an RSA JWK (JSON Web Key) for signing JWT access tokens
@@ -159,13 +183,23 @@ public class SecurityConfig {
         return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
     }
 
-    //Customize the JWT to include the 'scope' claim based on authorized scopes (this is needed by the resource server)
+    //Customize the JWT to include the 'scope' claim based on authorized scopes
+    // (this is needed by the resource server)
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             if (context.getTokenType().getValue().equals("access_token")) {
-                Set<String> scopes = context.getAuthorizedScopes();
-                context.getClaims().claim("scope", String.join(" ", scopes));
+                String username = context.getPrincipal().getName();
+                //restrict claims in the token for each user. should not contain all claims from the client
+                if(username.equals("basicuser")) {
+                    context.getClaims().claim("scope", "read");
+                }else if(username.equals("adminuser")) {
+                    context.getClaims().claim("scope", "read write delete");
+                }else {
+                    Set<String> scopes = context.getAuthorizedScopes();
+                    //associate all claims from the client with the access token
+                    context.getClaims().claim("scope", String.join(" ", scopes));
+                }
             }
         };
     }
