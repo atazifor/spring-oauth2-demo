@@ -4,8 +4,13 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,6 +31,9 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -39,6 +47,10 @@ import java.util.UUID;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
+    @Value("${custom.oauth2.redirect-uri}")
+    private String redirectUri;
 
     // 🔐 Filter chain for the Authorization Server (handles /oauth2/** and discovery endpoints)
     @Bean
@@ -81,6 +93,7 @@ public class SecurityConfig {
     * */
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
+        logger.info("Redirect URI: {}", redirectUri);
         //client credentials flow
         RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client")
@@ -93,7 +106,7 @@ public class SecurityConfig {
         RegisteredClient authCodeClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUri(redirectUri)
                 .clientId("postman")
                 .clientSecret(passwordEncoder().encode("postman"))
                 .scope("read")
@@ -110,6 +123,22 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilter() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(List.of("http://localhost:8083"));
+        config.setAllowedMethods(List.of("POST", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/oauth2/token", config);
+
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
     }
 
     @Bean

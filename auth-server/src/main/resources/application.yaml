@@ -19,3 +19,6 @@ logging:
     org.springframework.web: DEBUG
     org.springframework.security.oauth2: DEBUG
     com.example: DEBUG
+custom:
+  oauth2:
+    redirect-uri: https://oauth.pstmn.io/v1/callback

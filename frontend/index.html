@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth2 Frontend Demo</title>
+</head>
+<body>
+<h1>OAuth2 Login with Scopes</h1>
+
+<form id="login-form">
+    <label>Select Scopes:</label><br>
+    <input type="checkbox" name="scope" value="read" checked> read<br>
+    <input type="checkbox" name="scope" value="write"> write<br>
+    <input type="checkbox" name="scope" value="openid"> openid<br><br>
+    <button type="submit">Login</button>
+</form>
+
+<div id="output" style="margin-top:20px;"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

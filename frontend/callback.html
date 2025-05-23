@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><title>OAuth2 Callback</title></head>
+<body>
+<h2>OAuth2 Callback</h2>
+<pre id="output">Processing...</pre>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (!code) {
+        document.getElementById("output").textContent = "No code found in URL.";
+    } else {
+        fetch("http://localhost:9090/oauth2/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + btoa("postman:postman")
+            },
+            body: new URLSearchParams({
+                grant_type: "authorization_code",
+                code: code,
+                redirect_uri: "http://localhost:8083/callback.html"
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(err => {
+                document.getElementById("output").textContent = "Error: " + err;
+            });
+    }
+</script>
+</body>
+</html>
