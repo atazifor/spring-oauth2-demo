@@ -15,7 +15,15 @@
         <p>Processing...</p>
     </div>
 
-    <h3 style="margin-top: 2rem;">Raw Token Response</h3>
+    <div id="id-token-section" style="display: none;">
+        <h3 style="margin-top: 2rem;">🪪 ID Token</h3>
+        <div id="id-token" class="token-box"></div>
+        <p>
+            <a id="jwtio-link" href="#" target="_blank">🔎 Decode on jwt.io</a>
+        </p>
+    </div>
+
+    <h3 style="margin-top: 2rem;">📦 Raw Token Response</h3>
     <pre id="output"></pre>
 </div>
 
@@ -40,11 +48,11 @@
         })
             .then(res => res.json())
             .then(data => {
+                // 1. Show scopes
                 const scopesContainer = document.getElementById("scopes");
                 scopesContainer.innerHTML = "<h3>Granted Scopes:</h3>";
-
                 const scopes = (data.scope || "").split(" ");
-                if (scopes.length === 0 || !data.scope) {
+                if (!data.scope || scopes.length === 0) {
                     scopesContainer.innerHTML += "<p><em>No scopes found in token.</em></p>";
                 } else {
                     scopes.forEach(scope => {
@@ -55,7 +63,19 @@
                     });
                 }
 
+                // 2. Show raw token response
                 document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+
+                // 3. Show and link ID token if available
+                if (data.id_token) {
+                    const idTokenSection = document.getElementById("id-token-section");
+                    const idTokenBox = document.getElementById("id-token");
+                    const jwtLink = document.getElementById("jwtio-link");
+
+                    idTokenBox.textContent = data.id_token;
+                    jwtLink.href = `https://jwt.io/?token=${data.id_token}`;
+                    idTokenSection.style.display = "block";
+                }
             })
             .catch(err => {
                 document.getElementById("output").textContent = "Error: " + err;

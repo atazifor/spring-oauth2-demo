@@ -2,25 +2,32 @@ package com.example.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authorization.AuthorizationContext;
+import reactor.core.publisher.Mono;
 
 import java.util.Collection;
 
-@EnableMethodSecurity
 @Configuration
 @EnableWebFluxSecurity
 public class ResourceSecurityConfig {
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) throws Exception {
         http.authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/api/read").hasAuthority("SCOPE_read")
+                        .pathMatchers("/api/write").hasAuthority("SCOPE_write")
+                        .pathMatchers("/api/delete").hasAuthority("SCOPE_delete")
                         .pathMatchers("/api/**").hasAuthority("SCOPE_read")
+                        .pathMatchers("/api/admin").access(this::adminRoleCheck)
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth
@@ -29,6 +36,17 @@ public class ResourceSecurityConfig {
                         )
                 );
         return http.build();
+    }
+
+    private Mono<AuthorizationDecision> adminRoleCheck(Mono<Authentication> authentication, AuthorizationContext authorizationContext) {
+        return authentication
+                .map(auth -> {
+                    if (auth.getPrincipal() instanceof Jwt jwt) {
+                        return "admin".equals(jwt.getClaimAsString("role"));
+                    }
+                    return false;
+                })
+                .map(AuthorizationDecision::new);
     }
 
     private ReactiveJwtAuthenticationConverterAdapter grantedAuthoritiesExtractor() {

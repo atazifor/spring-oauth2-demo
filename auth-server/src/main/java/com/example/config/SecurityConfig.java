@@ -188,17 +188,45 @@ public class SecurityConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
+            String username = context.getPrincipal().getName();
             if (context.getTokenType().getValue().equals("access_token")) {
-                String username = context.getPrincipal().getName();
                 //restrict claims in the token for each user. should not contain all claims from the client
                 if(username.equals("basicuser")) {
                     context.getClaims().claim("scope", "read");
+                    context.getClaims().claim("role", "basic");
+                    context.getClaims().claim("email", "mbasuh@gmail.com");
+                    context.getClaims().claim("given_name", "User");
+                    context.getClaims().claim("family_name", "Doe");
+                    context.getClaims().claim("picture", "https://example.com/john-doe.jpg");
+                    context.getClaims().claim("locale", "en-US");
+                    context.getClaims().claim("zoneinfo", "Europe/Berlin");
+                    context.getClaims().claim("address", "{\"street_address\":\"123 Main St\",\"locality\":\"Anytown\",\"region\":\"NC\",\"postal_code\":\"27617\",\"country\":\"US\"}");
+                    context.getClaims().claim("phone_number", "+1 919-555-1234");
                 }else if(username.equals("adminuser")) {
                     context.getClaims().claim("scope", "read write delete");
+                    context.getClaims().claim("role", "admin");
+                    context.getClaims().claim("email", "admin@gmail.com");
+                    context.getClaims().claim("given_name", "Admin");
+                    context.getClaims().claim("family_name", "Doe");
+                    context.getClaims().claim("picture", "https://example.com/john-doe.jpg");
+                    context.getClaims().claim("locale", "en-US");
+                    context.getClaims().claim("zoneinfo", "Europe/Berlin");
                 }else {
                     Set<String> scopes = context.getAuthorizedScopes();
                     //associate all claims from the client with the access token
                     context.getClaims().claim("scope", String.join(" ", scopes));
+                }
+            }
+            if(context.getTokenType().getValue().equals("id_token")) {
+                // These claims are visible in the frontend
+                context.getClaims().claim("preferred_username", username);
+
+                if (username.equals("adminuser")) {
+                    context.getClaims().claim("email", "admin@example.com");
+                    context.getClaims().claim("role", "admin");
+                } else {
+                    context.getClaims().claim("email", "user@example.com");
+                    context.getClaims().claim("role", "basic");
                 }
             }
         };
