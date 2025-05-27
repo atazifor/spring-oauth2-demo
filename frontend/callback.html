@@ -21,6 +21,7 @@
         <p>
             <a id="jwtio-link" href="#" target="_blank">🔎 Decode on jwt.io</a>
         </p>
+        <div id="user-details" class="token-box"></div>
     </div>
 
     <h3 style="margin-top: 2rem;">📦 Raw Token Response</h3>
@@ -75,10 +76,21 @@
                     const idTokenSection = document.getElementById("id-token-section");
                     const idTokenBox = document.getElementById("id-token");
                     const jwtLink = document.getElementById("jwtio-link");
+                    const userDetails = document.getElementById("user-details");
 
                     idTokenBox.textContent = data.id_token;
                     jwtLink.href = `https://jwt.io/?token=${data.id_token}`;
                     idTokenSection.style.display = "block";
+
+                    const [header, payload, signature] = data.id_token.split(".");
+                    const decodedPayload = JSON.parse(atob(payload));
+                    const role = decodedPayload.role ? decodedPayload.role.toUpperCase() : "UNKNOWN";
+                    const email = decodedPayload.email ? decodedPayload.email.toUpperCase() : "NO EMAIL";
+
+                    userDetails.innerHTML = `
+                        <p>✅ <strong>${role}</strong></p>
+                        <p>📧 ${email}</p>
+                    `;
                 }
             })
             .catch(err => {
