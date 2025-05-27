@@ -9,9 +9,9 @@ public class CorsGlobalConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/oauth2/token")
+        registry.addMapping("/oauth2/**")
                 .allowedOrigins("http://localhost:8083")
-                .allowedMethods("POST", "OPTIONS")
+                .allowedMethods("POST", "OPTIONS", "GET")
                 .allowedHeaders("*")
                 .allowCredentials(true);
     }

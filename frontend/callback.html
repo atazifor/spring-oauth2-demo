@@ -25,6 +25,7 @@
 
     <h3 style="margin-top: 2rem;">📦 Raw Token Response</h3>
     <pre id="output"></pre>
+    <button onclick="logout()">Logout</button>
 </div>
 
 <script>
@@ -66,6 +67,9 @@
                 // 2. Show raw token response
                 document.getElementById("output").textContent = JSON.stringify(data, null, 2);
 
+                localStorage.setItem("access_token", data.access_token);
+                localStorage.setItem("refresh_token", data.refresh_token);
+
                 // 3. Show and link ID token if available
                 if (data.id_token) {
                     const idTokenSection = document.getElementById("id-token-section");
@@ -79,6 +83,40 @@
             })
             .catch(err => {
                 document.getElementById("output").textContent = "Error: " + err;
+            });
+    }
+    function logout() {
+        const refreshToken = localStorage.getItem("refresh_token");
+
+        if (!refreshToken) {
+            alert("No refresh token found.");
+            return;
+        }
+        console.log("Attempting logout with refresh token:", refreshToken);
+        fetch("http://localhost:9090/oauth2/revoke", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + btoa("frontend:frontend-secret"),
+            },
+            body: new URLSearchParams({
+                token: refreshToken,
+                token_type_hint: "refresh_token"
+            })
+        })
+            .then(res => {
+                if (res.ok) {
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("refresh_token");
+                    alert("✅ Logged out successfully.");
+                    window.location.href = "/callback.html"; // or whatever you want
+                } else {
+                    alert("⚠️ Failed to revoke token");
+                }
+            })
+            .catch(err => {
+                console.error("Fetch error:", err);
+                alert("Error: " + err);
             });
     }
 </script>
