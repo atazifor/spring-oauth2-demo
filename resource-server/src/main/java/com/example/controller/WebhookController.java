@@ -11,6 +11,8 @@ import reactor.core.publisher.Mono;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HexFormat;
 
 @RestController
@@ -22,8 +24,15 @@ public class WebhookController {
 
     @PostMapping
     public Mono<ResponseEntity<String>> handleWebhook(@RequestBody String payload,
-                                                      @RequestHeader("X-Signature") String signature) {
-        String computedSignature = hmacSha256(payload, webhookSecret);
+                                                      @RequestHeader("X-Signature") String signature,
+                                                      @RequestHeader("X-Signature-Timestamp") String timestamp) {
+        long now = Instant.now().getEpochSecond();
+        long timestampSeconds = Long.parseLong(timestamp);
+        if(now - timestampSeconds > 300) { //over 5 minutes passed
+            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("⏱ Expired or future-dated request"));
+        }
+        String computedSignature = hmacSha256(timestamp + "." + payload, webhookSecret);
         logger.info("Computed signature: " + computedSignature);
         if(computedSignature.equals(signature)) {
             logger.info("✅ Webhook verified: " + payload);
