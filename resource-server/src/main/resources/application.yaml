@@ -10,3 +10,5 @@ logging:
     org.springframework.security: DEBUG
 server:
   port: 8181
+webhook:
+  secret: test-secret
