@@ -1,0 +1,19 @@
+server:
+  port: 8585
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://auth-server:9090
+
+  cloud:
+    gateway:
+      default-filters:
+        - RemoveRequestHeader=Cookie
+        - TokenRelay #auto-propagates the bearer token downstream.
+      routes:
+        - id: resource-server
+          uri: http://resource-server:8181
+          predicates:
+            - Path=/api/**

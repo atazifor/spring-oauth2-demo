@@ -193,6 +193,8 @@ public class SecurityConfig {
         return context -> {
             String username = context.getPrincipal().getName();
             if (context.getTokenType().getValue().equals("access_token")) {
+                //override audience claims
+                context.getClaims().audience(List.of("frontend", "resource-server"));
                 //restrict claims in the token for each user. should not contain all claims from the client
                 if(username.equals("basicuser")) {
                     context.getClaims().claim("scope", "read");
